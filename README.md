@@ -2,15 +2,13 @@
 
 A polished, mobile-first, offline-capable personal music player for **MP3 and MP4** files. Media and metadata stay in the current browser's IndexedDB. There is no media upload endpoint, backend, account, analytics, or external asset dependency.
 
-## Run locally
+## Open Pocket
 
-Requirements: Python 3. Node.js 20+ is only needed for automated checks.
+**[Launch Pocket](https://pocket-local-player.leekang1931.chatgpt.site/)**
 
-```sh
-python3 -m http.server 4173 --directory dist
-```
+Use this link on your iPhone. GitHub stores the app’s source code; you do not need to run a local server or download the HTML. The deployed app currently has private access and may require signing in with the owning account.
 
-Open http://localhost:4173. Use `localhost` for service-worker support. Opening index.html directly from disk is not supported. All source is readable JavaScript modules; there is no installation or build step.
+To install: open the link in **Safari → Share → Add to Home Screen → Add**. Enable **Open as Web App** if shown, then launch the Pocket icon and import your music.
 
 ## Deploy to a public HTTPS URL
 
@@ -22,7 +20,7 @@ After each release, change the cache version in `dist/sw.js`. The service worker
 
 ## Install on iPhone
 
-1. Open the deployed HTTPS link in Safari.
+1. Open [Pocket](https://pocket-local-player.leekang1931.chatgpt.site/) in Safari.
 2. Tap **Share → Add to Home Screen → Add**. Enable **Open as Web App** if offered.
 3. Launch Pocket from its icon while online once, then import your files there.
 4. Tap a track to start. The installed app's library may be separate from Safari's library.
@@ -77,6 +75,16 @@ Settings and playback position are saved every few seconds and on relevant lifec
 - `dist/style.css`: responsive theme and safe-area layout.
 - `dist/sw.js`, `dist/manifest.webmanifest`: offline/install setup.
 - `tests/*.test.js`: automated queue and playlist behavior checks.
+
+## Developer preview (this computer only)
+
+Requirements: Python 3. Node.js 20+ is only needed for automated checks.
+
+```sh
+python3 -m http.server 4173 --directory dist
+```
+
+Open http://localhost:4173 on the same computer running that command. This development address is not the mobile app link. Use `localhost` for service-worker support. Opening index.html directly from disk is not supported. All source is readable JavaScript modules; there is no installation or build step.
 
 ## Validate
 
