@@ -1,3 +1,9 @@
+import {
+  isInstalled,
+  isAppleMobile,
+  promptInstall,
+  canPromptInstall,
+} from "./install.js";
 import { makePlaylist, addToPlaylist } from "./playlists.js";
 import { moveItem } from "./queue.js";
 import * as db from "./store.js";
@@ -67,6 +73,25 @@ let tracks = [],
   persisted = false,
   storageAvailable = true,
   noticeTimer;
+let returnView = {
+  route: "library",
+  libraryTab: "tracks",
+  openedPlaylist: null,
+};
+const viewScroll = new Map();
+let installDismissed = false;
+try {
+  installDismissed = sessionStorage.getItem("pocket-install-dismissed") === "1";
+} catch {}
+function viewKey() {
+  return route === "library"
+    ? `${route}:${libraryTab}:${openedPlaylist || ""}`
+    : route;
+}
+function installationHint() {
+  if (isInstalled() || installDismissed) return "";
+  return `<aside class="install-hint"><button data-action="install"><span class="install-logo">p</span><span><strong>Install Pocket</strong><small>Your music, in its own app window</small></span>${icon("up")}</button>${button("dismiss-install", "Dismiss installation suggestion", "close")}</aside>`;
+}
 function toast(message) {
   $("#toast").textContent = message;
   $("#toast").classList.add("visible");
@@ -91,19 +116,30 @@ function top() {
   return `<div class="topline"><a class="brand mobile-brand" href="#library"><span class="brand-mark">p</span> pocket<span class="brand-dot">•</span></a><p class="eyebrow">A LITTLE SPACE FOR YOUR SOUND</p><span class="device-badge">${icon("shield")} On this device</span></div>`;
 }
 function navigation() {
-  const tabs = [
+  const desktop = [
     ["library", "Library", "library"],
     ["playing", "Now Playing", "headphones"],
+    ["playlists", "Playlists", "music"],
     ["queue", "Queue", "queue"],
     ["settings", "Settings", "settings"],
   ];
-  for (const target of ["desktop-nav", "mobile-nav"])
+  const mobile = desktop.filter(([key]) => key !== "playing");
+  for (const [target, tabs] of [
+    ["desktop-nav", desktop],
+    ["mobile-nav", mobile],
+  ]) {
     $("#" + target).innerHTML = tabs
-      .map(
-        ([key, label, img]) =>
-          `<button data-route="${key}" class="${route === key ? "active" : ""}" ${route === key ? 'aria-current="page"' : ""}>${icon(img)}<span>${label}</span></button>`,
-      )
+      .map(([key, label, img]) => {
+        const active =
+          key === "playlists"
+            ? route === "library" && libraryTab === "playlists"
+            : key === "library"
+              ? route === "library" && libraryTab === "tracks"
+              : route === key;
+        return `<button data-route="${key}" class="${active ? "active" : ""}" ${active ? 'aria-current="page"' : ""}>${icon(img)}<span>${label}</span></button>`;
+      })
       .join("");
+  }
 }
 function empty(title, copy, cta = true) {
   return `<section class="empty">${icon("music")}<h2>${title}</h2><p>${copy}</p>${cta ? `<button class="primary" data-action="add">${icon("plus")} Add files</button><small>MP3 and MP4 files · Saved only on this device</small>` : ""}</section>`;
@@ -111,18 +147,18 @@ function empty(title, copy, cta = true) {
 function library() {
   if (libraryTab === "playlists") return playlistView();
   const list = ordered();
-  return `${top()}<header class="page-header"><div><h1>Your library</h1><p>${tracks.length ? `${tracks.length} track${tracks.length === 1 ? "" : "s"} · ${Math.round(tracks.reduce((n, t) => n + t.duration, 0) / 60)} minutes of your own` : "Your favorites. Always within reach."}</p></div><button class="primary" data-action="add" ${!storageAvailable || importing ? "disabled" : ""}>${icon("plus")} Add files</button></header>${libraryTabs()}${!tracks.length ? `<section class="intro-panel"><div><p class="eyebrow">OFFLINE. ON YOUR TERMS.</p><h2>Make yourself at home.</h2><p>Bring your MP3s and MP4s. We’ll take care of the listening.</p><button class="primary" data-action="add" ${!storageAvailable || importing ? "disabled" : ""}>${icon("plus")} Add your first tracks</button></div><div class="disc" aria-hidden="true"></div></section>` : `<div class="selection-bar"><button class="primary" data-action="play-all">${icon("play")} Play all</button><button class="secondary" data-action="shuffle-all">${icon("shuffle")} Shuffle</button></div>`}${importMessage ? `<div class="import-status" role="status">${escape(importMessage)}</div>` : ""}${!storageAvailable ? `<div class="panel"><h2>Storage is unavailable</h2><p>Allow website storage in your browser, then reload. Pocket won’t import files it can’t keep safely.</p><button class="secondary" data-action="reload">Try again</button></div>` : ""}<div class="library-tools"><h2>All tracks <span class="count">${tracks.length}</span></h2>${tracks.length ? `<button class="text-button" data-action="select">${selecting ? "Done" : "Select"}</button><select class="select" id="sort" aria-label="Sort library"><option value="recent" ${sort === "recent" ? "selected" : ""}>Recently added</option><option value="title" ${sort === "title" ? "selected" : ""}>Title A–Z</option><option value="duration" ${sort === "duration" ? "selected" : ""}>Longest first</option></select>` : ""}</div>${selecting ? `<div class="selection-bar"><span>${selected.size} selected</span><button class="secondary" data-action="select-all">Select all</button><button class="secondary" data-action="queue-selected" ${!selected.size ? "disabled" : ""}>Queue</button><button class="secondary" data-action="playlist-selected" ${!selected.size ? "disabled" : ""}>Add to playlist</button><button class="secondary danger" data-action="delete-selected" ${!selected.size ? "disabled" : ""}>Delete</button></div>` : ""}${list.length ? `<div class="track-header"><span>TRACK</span><span>TIME</span></div><div>${list.map((t, i) => `<article class="track ${player.state.current === t.id ? "current" : ""}">${selecting ? `<input class="track-check" type="checkbox" aria-label="Select ${escape(t.title)}" data-select="${t.id}" ${selected.has(t.id) ? "checked" : ""}>` : `<button class="track-number" data-action="track" data-id="${t.id}" aria-label="Play ${escape(t.title)}">${player.state.current === t.id && !player.audio.paused ? icon("volume") : String(i + 1).padStart(2, "0")}</button>`}${art(t)}<div><button class="track-title" style="max-width:100%;min-height:24px;padding:0;text-align:left" data-action="track" data-id="${t.id}">${escape(t.title)}</button><div class="track-meta">${escape(t.artist || t.format || "Local audio")} · ${time(t.duration)}</div></div><span class="duration">${time(t.duration)}</span>${button("options", `Options for ${t.title}`, "more", "", 'data-id="' + t.id + '"')}</article>`).join("")}</div>` : empty("A good library starts with one track.", "Choose MP3s and MP4s from Files, or drop them here. No syncing, no subscriptions, just play.", false)}<div class="library-foot">${icon("shield")} ${bytes(tracks.reduce((n, t) => n + t.size, 0))} stored locally · Your files never leave this device</div>`;
+  return `${top()}<header class="page-header"><div><h1>Library</h1><p>${tracks.length ? `${tracks.length} track${tracks.length === 1 ? "" : "s"} · ${Math.round(tracks.reduce((n, t) => n + t.duration, 0) / 60)} minutes of your own` : "Your favorites. Always within reach."}</p></div><button class="primary" data-action="add" ${!storageAvailable || importing ? "disabled" : ""}>${icon("plus")} Add files</button></header>${libraryTabs()}${!tracks.length ? `<section class="intro-panel"><div><p class="eyebrow">OFFLINE. ON YOUR TERMS.</p><h2>Make yourself at home.</h2><p>Bring your MP3s and MP4s. We’ll take care of the listening.</p><button class="primary" data-action="add" ${!storageAvailable || importing ? "disabled" : ""}>${icon("plus")} Add your first tracks</button></div><div class="disc" aria-hidden="true"></div></section>` : `<div class="selection-bar"><button class="primary" data-action="play-all">${icon("play")} Play all</button><button class="secondary" data-action="shuffle-all">${icon("shuffle")} Shuffle</button></div>`}${importMessage ? `<div class="import-status" role="status">${escape(importMessage)}</div>` : ""}${!storageAvailable ? `<div class="panel"><h2>Storage is unavailable</h2><p>Allow website storage in your browser, then reload. Pocket won’t import files it can’t keep safely.</p><button class="secondary" data-action="reload">Try again</button></div>` : ""}<div class="library-tools"><h2>All tracks <span class="count">${tracks.length}</span></h2>${tracks.length ? `<button class="text-button" data-action="select">${selecting ? "Done" : "Select"}</button><select class="select" id="sort" aria-label="Sort library"><option value="recent" ${sort === "recent" ? "selected" : ""}>Recently added</option><option value="title" ${sort === "title" ? "selected" : ""}>Title A–Z</option><option value="duration" ${sort === "duration" ? "selected" : ""}>Longest first</option></select>` : ""}</div>${selecting ? `<div class="selection-bar"><span>${selected.size} selected</span><button class="secondary" data-action="select-all">Select all</button><button class="secondary" data-action="queue-selected" ${!selected.size ? "disabled" : ""}>Queue</button><button class="secondary" data-action="playlist-selected" ${!selected.size ? "disabled" : ""}>Add to playlist</button><button class="secondary danger" data-action="delete-selected" ${!selected.size ? "disabled" : ""}>Delete</button></div>` : ""}${list.length ? `<div class="track-header"><span>TRACK</span><span>TIME</span></div><div>${list.map((t, i) => `<article class="track ${player.state.current === t.id ? "current" : ""}">${selecting ? `<input class="track-check" type="checkbox" aria-label="Select ${escape(t.title)}" data-select="${t.id}" ${selected.has(t.id) ? "checked" : ""}>` : `<button class="track-number" data-action="track" data-id="${t.id}" aria-label="Play ${escape(t.title)}">${player.state.current === t.id && !player.audio.paused ? icon("volume") : String(i + 1).padStart(2, "0")}</button>`}${art(t)}<div><button class="track-title" style="max-width:100%;min-height:24px;padding:0;text-align:left" data-action="track" data-id="${t.id}">${escape(t.title)}</button><div class="track-meta">${escape(t.artist || t.format || "Local audio")} · ${time(t.duration)}</div></div><span class="duration">${time(t.duration)}</span>${button("options", `Options for ${t.title}`, "more", "", 'data-id="' + t.id + '"')}</article>`).join("")}</div>` : empty("A good library starts with one track.", "Choose MP3s and MP4s from Files, or drop them here. No syncing, no subscriptions, just play.", false)}<div class="library-foot">${icon("shield")} ${bytes(tracks.reduce((n, t) => n + t.size, 0))} stored locally · Your files never leave this device</div>`;
 }
 function playing() {
   const t = player.track;
   if (!t)
-    return `${top()}<header class="page-header"><h1>Now playing</h1></header><div class="no-track">${empty("Find your next favorite moment.", "Choose a track from your library, or bring something new.")}<button class="text-button" data-route="library">Go to library →</button></div>`;
+    return `${top()}<header class="page-header player-heading">${button("collapse-player", "Close Now Playing", "down", "collapse-player")}<h1>Now playing</h1></header><div class="no-track">${empty("Find your next favorite moment.", "Choose a track from your library, or bring something new.")}<button class="text-button" data-route="library">Go to library →</button></div>`;
   const s = player.state;
-  return `${top()}<header class="page-header"><div><p class="eyebrow">FROM YOUR LIBRARY</p><h1>Now playing</h1></div>${button("options", "Track options", "more", "", 'data-id="' + t.id + '"')}</header><section class="player-layout"><div class="cover-wrap">${art(t)}</div><div class="player-copy"><h2>${escape(t.title)}</h2><p>${escape(t.artist || t.format || "Local audio")} · ${bytes(t.size)}</p><div class="progress-block"><input id="seek" type="range" min="0" max="${t.duration}" step="0.1" value="${player.audio.currentTime || s.position}" aria-label="Playback position"><div class="time-row"><span id="elapsed">${time(player.audio.currentTime || s.position)}</span><span id="remaining">−${time(t.duration - (player.audio.currentTime || s.position))}</span></div></div><div class="transport">${button("shuffle", s.shuffle ? "Turn shuffle off" : "Turn shuffle on", "shuffle", s.shuffle ? "is-on" : "", `aria-pressed="${s.shuffle}"`)}${button("previous", "Previous track", "previous")}<button class="play-round" data-action="toggle" aria-label="${player.audio.paused ? "Play" : "Pause"}">${icon(player.audio.paused ? "play" : "pause")}</button>${button("next", "Next track", "next")}${button("repeat", `Repeat: ${s.repeat}`, "repeat", s.repeat !== "off" ? "is-on" : "", `aria-pressed="${s.repeat !== "off"}"`)}${s.repeat === "one" ? '<span class="subtle">1</span>' : ""}</div><div class="extra-controls"><button class="subtle" data-action="back">${icon("back")} 10s</button><button class="subtle" data-action="speed">${s.speed}×</button><button class="subtle" data-action="forward">10s ${icon("forward")}</button></div><div class="volume">${button("mute", s.muted ? "Unmute" : "Mute", s.muted ? "mute" : "volume")}<input id="volume" type="range" min="0" max="1" step=".01" value="${s.volume}" aria-label="Volume"></div><p class="notice">On iPhone, use your device’s volume buttons.</p><div class="player-footer"><button class="text-button" data-route="settings">${icon("settings")} ${s.eqEnabled ? s.eqPreset : "Equalizer off"}</button><button class="text-button" data-route="queue">${icon("queue")} Up next (${s.queue.length})</button></div></div></section>`;
+  return `${top()}<header class="page-header player-heading">${button("collapse-player", "Close Now Playing", "down", "collapse-player")}<div><p class="eyebrow">FROM YOUR LIBRARY</p><h1>Now playing</h1></div>${button("options", "Track options", "more", "", 'data-id="' + t.id + '"')}</header><section class="player-layout"><div class="cover-wrap">${art(t)}</div><div class="player-copy"><h2>${escape(t.title)}</h2><p>${escape(t.artist || t.format || "Local audio")} · ${bytes(t.size)}</p><div class="progress-block"><input id="seek" type="range" min="0" max="${t.duration}" step="0.1" value="${player.audio.currentTime || s.position}" aria-label="Playback position"><div class="time-row"><span id="elapsed">${time(player.audio.currentTime || s.position)}</span><span id="remaining">−${time(t.duration - (player.audio.currentTime || s.position))}</span></div></div><div class="transport">${button("shuffle", s.shuffle ? "Turn shuffle off" : "Turn shuffle on", "shuffle", s.shuffle ? "is-on" : "", `aria-pressed="${s.shuffle}"`)}${button("previous", "Previous track", "previous")}<button class="play-round" data-action="toggle" aria-label="${player.audio.paused ? "Play" : "Pause"}">${icon(player.audio.paused ? "play" : "pause")}</button>${button("next", "Next track", "next")}${button("repeat", `Repeat: ${s.repeat}`, "repeat", s.repeat !== "off" ? "is-on" : "", `aria-pressed="${s.repeat !== "off"}"`)}${s.repeat === "one" ? '<span class="subtle">1</span>' : ""}</div><div class="extra-controls"><button class="subtle" data-action="back">${icon("back")} 10s</button><button class="subtle" data-action="speed">${s.speed}×</button><button class="subtle" data-action="forward">10s ${icon("forward")}</button></div><div class="volume">${button("mute", s.muted ? "Unmute" : "Mute", s.muted ? "mute" : "volume")}<input id="volume" type="range" min="0" max="1" step=".01" value="${s.volume}" aria-label="Volume"></div><p class="notice">On iPhone, use your device’s volume buttons.</p><div class="player-footer"><button class="text-button" data-route="settings">${icon("settings")} ${s.eqEnabled ? s.eqPreset : "Equalizer off"}</button><button class="text-button" data-route="queue">${icon("queue")} Up next (${s.queue.length})</button></div></div></section>`;
 }
 function queue() {
   const s = player.state;
-  return `${top()}<header class="page-header"><div><h1>Your queue</h1><p>${s.queue.length} track${s.queue.length === 1 ? "" : "s"} coming up</p></div><button class="secondary" data-action="clear-queue" ${s.queue.length ? "" : "disabled"}>Clear queue</button></header>${player.track ? `<p class="eyebrow">NOW PLAYING</p><article class="track queue-track current">${art(player.track)}<div><div class="track-title">${escape(player.track.title)}</div><div class="track-meta">${escape(player.track.artist || player.track.format || "Local audio")}</div></div><div class="queue-actions">${button("toggle", player.audio.paused ? "Play" : "Pause", player.audio.paused ? "play" : "pause")}</div></article><p class="eyebrow" style="margin-top:32px">UP NEXT</p>` : ""}${
+  return `${top()}<header class="page-header"><div><h1>Queue</h1><p>${s.queue.length} track${s.queue.length === 1 ? "" : "s"} coming up</p></div><button class="secondary" data-action="clear-queue" ${s.queue.length ? "" : "disabled"}>Clear queue</button></header>${player.track ? `<p class="eyebrow">NOW PLAYING</p><article class="track queue-track current">${art(player.track)}<div><div class="track-title">${escape(player.track.title)}</div><div class="track-meta">${escape(player.track.artist || player.track.format || "Local audio")}</div></div><div class="queue-actions">${button("toggle", player.audio.paused ? "Play" : "Pause", player.audio.paused ? "play" : "pause")}</div></article><p class="eyebrow" style="margin-top:32px">UP NEXT</p>` : ""}${
     s.queue.length
       ? s.queue
           .map((id, i) => {
@@ -143,7 +179,7 @@ function selectSetting(id, label, values, current) {
 }
 function settings() {
   const s = player.state;
-  return `${top()}<header class="page-header"><div><h1>Make it yours</h1><p>A few small things. A better listen.</p></div></header><div class="settings-grid"><section class="panel"><h2>Listening</h2>${selectSetting(
+  return `${top()}<header class="page-header"><div><h1>Settings</h1><p>Playback, sound, and storage</p></div></header><div class="settings-grid"><section class="panel"><h2>Listening</h2>${selectSetting(
     "repeat-setting",
     "Repeat",
     [
@@ -183,10 +219,18 @@ function render() {
   document.body.classList.toggle("light", player.state.theme === "light");
   $('meta[name="theme-color"]').content =
     player.state.theme === "light" ? "#f5f7f0" : "#101311";
+  const scroll = $("#main").scrollTop;
+  document.body.dataset.view = route;
+  document.body.classList.toggle("installed", isInstalled());
+  document.body.classList.toggle("has-track", Boolean(player.track));
+  document.body.classList.toggle("apple-mobile", isAppleMobile());
   navigation();
   $("#main").innerHTML = (
     { library, playing, queue, settings }[route] || library
   )();
+  if (route !== "playing")
+    $("#main").insertAdjacentHTML("afterbegin", installationHint());
+  $("#main").scrollTop = scroll;
   renderMini();
 }
 function renderMini() {
@@ -211,12 +255,42 @@ function updateTime() {
     $("#mini-bar").style.width = `${total ? (now / total) * 100 : 0}%`;
 }
 function navigate(next) {
+  viewScroll.set(viewKey(), $("#main").scrollTop);
+  if (next === "playing" && route !== "playing")
+    returnView = { route, libraryTab, openedPlaylist };
+  if (next === "playlists") {
+    next = "library";
+    libraryTab = "playlists";
+    openedPlaylist = null;
+  } else if (next === "library") {
+    libraryTab = "tracks";
+    openedPlaylist = null;
+  }
   if (!["library", "playing", "queue", "settings"].includes(next))
     next = "library";
   route = next;
-  history.replaceState(null, "", "#" + next);
+  history.replaceState(
+    null,
+    "",
+    "#" +
+      (route === "library" && libraryTab === "playlists" ? "playlists" : route),
+  );
   render();
+  $("#main").scrollTop = viewScroll.get(viewKey()) || 0;
   window.scrollTo(0, 0);
+}
+function collapsePlayer() {
+  route = returnView.route;
+  libraryTab = returnView.libraryTab;
+  openedPlaylist = returnView.openedPlaylist;
+  history.replaceState(
+    null,
+    "",
+    "#" +
+      (route === "library" && libraryTab === "playlists" ? "playlists" : route),
+  );
+  render();
+  $("#main").scrollTop = viewScroll.get(viewKey()) || 0;
 }
 function modal(html) {
   $("#dialog").innerHTML = button("close", "Close", "close", "close") + html;
@@ -458,10 +532,28 @@ const actions = {
       toast("Persistent storage is not available in this browser.");
     }
   },
-  install: () =>
+  "dismiss-install": () => {
+    installDismissed = true;
+    try {
+      sessionStorage.setItem("pocket-install-dismissed", "1");
+    } catch {}
+    render();
+  },
+  "collapse-player": collapsePlayer,
+  install: async () => {
+    if (isInstalled()) {
+      toast("Pocket is already running as your Home Screen app.");
+      return;
+    }
+    if (canPromptInstall()) {
+      const outcome = await promptInstall();
+      if (outcome === "accepted") toast("Pocket is ready to add to your apps.");
+      return;
+    }
     modal(
-      '<h2>A home for your music.</h2><p>Install Pocket on iPhone:</p><ol><li>Open this site in <strong>Safari</strong>.</li><li>Tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</li><li>Tap <strong>Add</strong>, then open Pocket from its icon.</li><li>Import your MP3s and MP4s in the installed app and tap Play.</li></ol><p class="notice">Open once online so the interface can be saved. Media stays in this browser’s storage. On desktop, use your browser’s install option if available.</p><button class="primary" data-action="close">Got it</button>',
-    ),
+      `<div class="install-sheet-icon">p</div><h2>Make Pocket an app.</h2><p>Launch from your Home Screen with no browser toolbar.</p>${isAppleMobile() ? '<ol class="install-steps"><li><strong>Open this link in Safari.</strong><span>Use the Pocket app link, not the GitHub page.</span></li><li><strong>Tap Share → Add to Home Screen.</strong><span>You may need to scroll down in the Share menu.</span></li><li><strong>Keep Open as Web App enabled.</strong><span>If that switch is shown, leave it on and tap Add.</span></li><li><strong>Open the new Pocket icon.</strong><span>Import your music in the installed app.</span></li></ol>' : '<ol class="install-steps"><li><strong>Open your browser’s menu.</strong><span>Choose Install app or Add to Home Screen, when available.</span></li><li><strong>Launch the Pocket icon.</strong><span>On iPhone, use Safari → Share → Add to Home Screen, with Open as Web App enabled if shown.</span></li></ol>'}<p class="notice">Files stay in the browser or installed app where you import them. Keep your originals; installation does not transfer your existing library.</p><button class="primary install-done" data-action="close">Got it</button>`,
+    );
+  },
 };
 document.addEventListener("click", async (event) => {
   const el = event.target.closest("[data-action],[data-route]");
@@ -663,7 +755,7 @@ function libraryTabs() {
 }
 function playlistView() {
   const p = playlists.find((p) => p.id === openedPlaylist);
-  const header = `${top()}<header class="page-header"><div><h1>${p ? escape(p.name) : "Your playlists"}</h1><p>${p ? `${p.trackIds.length} tracks · Made by you` : "A collection for every kind of day."}</p></div><button class="primary" data-action="${p ? "playlist-edit-tracks" : "playlist-create"}">${icon("plus")} ${p ? "Add tracks" : "Create"}</button></header>${libraryTabs()}`;
+  const header = `${top()}<header class="page-header"><div><h1>${p ? escape(p.name) : "Playlists"}</h1><p>${p ? `${p.trackIds.length} tracks · Made by you` : "A collection for every kind of day."}</p></div><button class="primary" data-action="${p ? "playlist-edit-tracks" : "playlist-create"}">${icon("plus")} ${p ? "Add tracks" : "Create"}</button></header>${libraryTabs()}`;
   if (!p)
     return (
       header +
@@ -725,7 +817,9 @@ function playlistNameDialog(existing = null, ids = []) {
       $("#dialog").close();
       openedPlaylist = p.id;
       libraryTab = "playlists";
-      navigate("library");
+      route = "library";
+      history.replaceState(null, "", "#playlists");
+      render();
       toast(existing ? "Playlist renamed." : "Playlist created.");
     } catch (error) {
       toast(db.storageError(error));
@@ -861,4 +955,40 @@ Object.assign(actions, {
     });
   },
 });
+window.addEventListener("pocket-install-change", () => {
+  if (player) render();
+});
+window
+  .matchMedia("(display-mode: standalone)")
+  .addEventListener?.("change", () => {
+    if (player) render();
+  });
+let playerGesture;
+document.addEventListener(
+  "touchstart",
+  (event) => {
+    if (
+      route === "playing" &&
+      event.target.closest(".cover-wrap") &&
+      event.touches.length === 1
+    ) {
+      playerGesture = {
+        x: event.touches[0].clientX,
+        y: event.touches[0].clientY,
+      };
+    } else playerGesture = null;
+  },
+  { passive: true },
+);
+document.addEventListener(
+  "touchend",
+  (event) => {
+    if (!playerGesture || !event.changedTouches.length) return;
+    const dx = event.changedTouches[0].clientX - playerGesture.x;
+    const dy = event.changedTouches[0].clientY - playerGesture.y;
+    playerGesture = null;
+    if (dy > 75 && dy > Math.abs(dx) * 1.5) collapsePlayer();
+  },
+  { passive: true },
+);
 boot().catch((e) => toast(`Pocket couldn’t start: ${e.message}`));

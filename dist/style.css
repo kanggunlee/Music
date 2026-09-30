@@ -1224,3 +1224,399 @@ body.light .intro-panel .primary {
     font-size: 0.8125rem;
   }
 }
+
+/* Mobile app shell: the screen scrolls inside stable navigation and player chrome. */
+.install-hint {
+  display: none;
+}
+.collapse-player {
+  display: none;
+}
+.install-sheet-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 19px;
+  background: var(--accent);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  font-weight: 800;
+  margin: 8px 0 24px;
+}
+.install-steps {
+  padding-left: 22px;
+}
+.install-steps li {
+  padding: 6px 0 12px 8px;
+}
+.install-steps strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.install-steps span {
+  display: block;
+  line-height: 1.5;
+  font-size: 0.875rem;
+}
+.install-done {
+  width: 100%;
+}
+@media (max-width: 700px) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  #app {
+    height: 100vh;
+    height: 100dvh;
+    position: relative;
+    isolation: isolate;
+  }
+  main {
+    position: absolute;
+    inset: 0 0 calc(72px + env(safe-area-inset-bottom));
+    margin: 0;
+    max-width: none;
+    padding: calc(12px + env(safe-area-inset-top)) 20px 24px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-top: 18px;
+  }
+  body.has-track main {
+    bottom: calc(145px + env(safe-area-inset-bottom));
+  }
+  .topline {
+    display: none;
+  }
+  .page-header {
+    margin: 8px 0 22px;
+    align-items: center;
+  }
+  .page-header h1 {
+    font-size: 2rem;
+    letter-spacing: -0.05em;
+    margin-bottom: 6px;
+  }
+  .page-header p {
+    font-size: 0.8125rem;
+  }
+  .page-header .primary {
+    font-size: 0.875rem;
+    min-height: 44px;
+    border-radius: 24px;
+    padding: 10px 15px;
+  }
+  .intro-panel {
+    display: none;
+  }
+  .empty {
+    margin: 24px 0;
+    padding: 34px 20px;
+    border: 0;
+    background: var(--panel);
+  }
+  .empty h2 {
+    font-size: 1.2rem;
+  }
+  .empty p {
+    font-size: 0.875rem;
+  }
+  .library-foot {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    padding-bottom: 4px;
+  }
+  .library-tabs {
+    display: none;
+  }
+  .library-tools {
+    margin: 16px 0 9px;
+  }
+  .selection-bar {
+    gap: 8px;
+  }
+  .track {
+    padding: 9px 0;
+    border-radius: 0;
+  }
+  .track-title {
+    min-height: 36px !important;
+    line-height: 1.3;
+  }
+  .track-meta {
+    margin-top: 0;
+  }
+  .art {
+    border-radius: 10px;
+  }
+  #mobile-nav {
+    position: absolute;
+    bottom: 0;
+    min-height: calc(72px + env(safe-area-inset-bottom));
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  #mobile-nav button {
+    gap: 4px;
+    font-size: 0.75rem;
+    min-height: 48px;
+  }
+  #mobile-nav svg {
+    width: 23px;
+    height: 23px;
+  }
+  #mobile-nav button.active svg {
+    stroke-width: 2.4;
+  }
+  #mobile-nav button.active span {
+    font-weight: 650;
+  }
+  .mini {
+    position: fixed;
+    bottom: calc(79px + env(safe-area-inset-bottom));
+    padding: 9px 11px;
+    min-height: 59px;
+    box-shadow: 0 8px 22px #0002;
+  }
+  .mini-info {
+    min-height: 42px;
+    padding: 0;
+  }
+  .mini-info .track-title {
+    min-height: 0 !important;
+    font-size: 0.875rem;
+  }
+  .mini-info .art {
+    width: 42px;
+  }
+  .mini-controls .play-round {
+    color: var(--accent);
+  }
+  .install-hint {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 15px;
+    margin: 0 0 22px;
+    padding: 6px;
+  }
+  .install-hint > button:first-child {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    padding: 4px;
+  }
+  .install-hint > button:first-child > svg {
+    width: 16px;
+    transform: rotate(90deg);
+    margin-left: auto;
+  }
+  .install-hint strong,
+  .install-hint small {
+    display: block;
+  }
+  .install-hint strong {
+    font-size: 0.875rem;
+    margin-bottom: 3px;
+  }
+  .install-hint small {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .install-logo {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--ink);
+    border-radius: 10px;
+    font-size: 1.8rem;
+    font-weight: 800;
+  }
+  body.installed .install-hint {
+    display: none;
+  }
+  body[data-view="playing"] #mobile-nav,
+  body[data-view="playing"] #mini {
+    display: none;
+  }
+  body[data-view="playing"] main {
+    inset: 0;
+    padding: calc(10px + env(safe-area-inset-top)) 26px
+      calc(20px + env(safe-area-inset-bottom));
+    background: radial-gradient(
+      ellipse at 50% 20%,
+      var(--panel2),
+      var(--bg) 70%
+    );
+    z-index: 30;
+  }
+  .player-heading {
+    display: grid;
+    grid-template-columns: 44px 1fr 44px;
+    gap: 8px;
+    margin: 0 0 20px;
+    text-align: center;
+  }
+  .player-heading .collapse-player {
+    display: inline-grid;
+  }
+  .player-heading h1 {
+    font-size: 0.875rem;
+    letter-spacing: 0.01em;
+    margin: 0;
+  }
+  .player-heading .eyebrow {
+    font-size: 0.625rem;
+    margin-bottom: 6px;
+    letter-spacing: 0.13em;
+  }
+  .player-layout {
+    max-width: 420px;
+    padding: 0;
+  }
+  .cover-wrap {
+    width: min(100%, 36svh);
+    margin-bottom: 25px;
+    touch-action: pan-x;
+  }
+  .cover-wrap .art {
+    border-radius: 20px;
+  }
+  .player-copy h2 {
+    font-size: 1.45rem;
+    line-height: 1.2;
+    margin-bottom: 5px;
+  }
+  .player-copy > p {
+    margin-bottom: 0;
+  }
+  .progress-block {
+    margin: 16px 0;
+  }
+  .transport {
+    gap: 6px;
+    position: relative;
+  }
+  .transport .play-round {
+    width: 68px;
+    height: 68px;
+  }
+  .transport > .subtle {
+    position: absolute;
+    right: 16px;
+    bottom: -5px;
+  }
+  .extra-controls {
+    margin-top: 10px;
+    gap: 24px;
+  }
+  .volume {
+    margin-top: 8px;
+  }
+  .player-copy > .notice {
+    font-size: 0.75rem;
+  }
+  body.apple-mobile .volume {
+    display: none;
+  }
+  body.apple-mobile .player-copy > .notice {
+    margin-top: 12px;
+  }
+  .player-footer {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  dialog {
+    position: fixed;
+    inset: auto 0 0;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - env(safe-area-inset-top) - 30px);
+    border-radius: 25px 25px 0 0;
+    padding: 33px 24px calc(24px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  dialog:before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: calc(50% - 18px);
+    width: 36px;
+    height: 4px;
+    background: var(--muted);
+    opacity: 0.5;
+    border-radius: 4px;
+  }
+  dialog .close {
+    top: 19px;
+  }
+  dialog input[type="text"] {
+    font-size: 1rem;
+  }
+  dialog .menu-action {
+    min-height: 52px;
+  }
+  .playlist-grid {
+    gap: 18px;
+  }
+  .playlist-toolbar {
+    margin-top: 0;
+  }
+  .queue-track .queue-actions .icon-button {
+    min-height: 44px;
+    width: 44px;
+  }
+  #toast {
+    bottom: calc(154px + env(safe-area-inset-bottom));
+  }
+  body[data-view="playing"] #toast {
+    bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 700px) and (prefers-reduced-motion: no-preference) {
+  body[data-view="playing"] main {
+    animation: player-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  dialog[open] {
+    animation: sheet-in 0.2s ease-out;
+  }
+  button:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  @keyframes player-in {
+    from {
+      transform: translateY(35px);
+      opacity: 0.4;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+  @keyframes sheet-in {
+    from {
+      transform: translateY(25px);
+      opacity: 0.6;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+}

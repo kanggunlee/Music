@@ -1,10 +1,11 @@
 // Only the interface is cached. User media is held privately in IndexedDB.
-const CACHE = "pocket-shell-v3";
+const CACHE = "pocket-shell-v4";
 const SHELL = [
   "./",
   "./index.html",
   "./style.css",
   "./app.js",
+  "./install.js",
   "./store.js",
   "./metadata.js",
   "./player.js",

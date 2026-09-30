@@ -99,3 +99,11 @@ Before a release on a target iPhone: import both formats, play/seek/pause, switc
 Serve the repository root on a **separate, disposable origin**, for example `python3 -m http.server 4174`, then open `http://localhost:4174/tests/browser.html` and press Run checks. This intentionally clears Pocket data on that test origin, so never run it on the origin containing your personal library. Included fixtures are generated low-volume sine tones, not commercial music.
 
 The browser suite checks decoding and tag extraction for both formats, invalid-file rejection, transactional media storage, playlist persistence and cleanup, playback/seek/pause/next, repeat, EQ gain changes and native fallback, saved position/modes, and deletion.
+
+## Home Screen app experience
+
+Pocket is an installable web app. On iPhone, open the **deployed Pocket link** in Safari (not the GitHub source page), choose Share → Add to Home Screen, leave **Open as Web App** enabled when offered, then launch the new Pocket icon. This launches a standalone app window without Safari’s toolbar. Opening the ordinary link remains a browser session.
+
+The mobile interface uses a fixed screen with separate scrolling content, Library/Playlists/Queue/Settings tabs, a persistent mini player, and a full-screen Now Playing view. Tap the mini player to expand it; use the down chevron or swipe down on the artwork to return. Track options open as bottom sheets. An installation suggestion appears in mobile browsers and hides when running standalone.
+
+No App Store installation is required. Home Screen installation does not make this a native iOS binary or remove Safari’s background-audio restrictions. Your existing library is not uploaded or automatically transferred between browser contexts.
